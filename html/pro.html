@@ -1,0 +1,923 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>pro</title><meta name="generator" content="MATLAB 9.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2021-12-16"><meta name="DC.source" content="pro.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">Problem Set--up: Define Scenario, Simulate no noise case</a></li><li><a href="#3">Create IMU measurements (accel, rate gyro) and 2D GPS</a></li><li><a href="#4">SENSOR MODEL: Obstalce detector</a></li><li><a href="#5">SENSOR MODEL: Odometry</a></li><li><a href="#6">PF</a></li><li><a href="#8">Least Squares estimation</a></li><li><a href="#9">Plotting functions</a></li></ul></div><pre class="codeinput"><span class="comment">%MAE 6760 Model Based Estimation %   M. Campbell</span>
+<span class="comment">%Xinyu Liu</span>
+<span class="comment">%Final Project</span>
+</pre><h2 id="2">Problem Set--up: Define Scenario, Simulate no noise case</h2><pre class="codeinput">clear <span class="string">all</span>;close <span class="string">all</span>;
+rng(<span class="string">'default'</span>)
+video_name=<span class="string">'PF_Gaussian1.mp4'</span>;
+record_video=0;
+<span class="comment">%Define trajectory</span>
+Uacc = [zeros(1,100)];
+Uomega = [ones(1,30)*0.1 zeros(1,30) -ones(1,40)*0.3];
+<span class="comment">%simulate no noise system</span>
+[Xnonoise,n,t,dt,nt]=simulate_robot(Uacc,Uomega);
+nk=nt;
+plot_birdseyeview(Xnonoise,[],[],<span class="string">'True trajectory View'</span>);
+<span class="comment">% %calculate est error and plot errorbar</span>
+<span class="comment">% i=1;xe=zeros(2,100)</span>
+<span class="comment">% for i=(1:99)</span>
+<span class="comment">% xe(:,i)=Elocation(Xnonoise,i)</span>
+<span class="comment">% i=i+1</span>
+<span class="comment">% end</span>
+nx=1:10:100;
+x=Xnonoise(1,nx);
+y=Xnonoise(2,nx);
+<span class="comment">% errorx=xe(1,nx)-x;</span>
+<span class="comment">% errory=xe(2,nx)-y;</span>
+xpos=[0,1.1554,0,0,0,0.79,0,0.558,0,0];
+xneg=[0.422,0,0.3021,0.0755,0.2741,0,0.0494,0,0.3838,0.1087];
+ypos=[0.5887,0,0.0354,0,0.5228,0.1143,0.3003,0.1914,0.2372,0.4706];
+yneg=[0,0.8959,0,0.2683,0,0,0,0,0,0];
+hold <span class="string">on</span>
+errorbar(x,y,yneg,ypos,xneg,xpos,<span class="string">'o'</span>)
+ii_plot=[3 4];
+plot_estimator(t,Xnonoise,[],[],ii_plot,<span class="string">'Ture Velocity/Heading States'</span>);
+<span class="comment">%[xe]=Elocation(Xnonoise,10)</span>
+</pre><img vspace="5" hspace="5" src="pro_01.png" alt=""> <h2 id="3">Create IMU measurements (accel, rate gyro) and 2D GPS</h2><pre class="codeinput">nw=2;
+Qw=diag([0.1^2 0.04^2]);
+Qsq=sqrtm(Qw);
+w=sqrtm(Qw)*randn(nw,nk);
+Zacc=Uacc+w(1,:);
+Zrg=Uomega+w(2,:);
+<span class="comment">%Create 2D GPS like measurements</span>
+nz=2;
+R=eye(nz)*1^2;
+v=sqrtm(R)*randn(nz,nt);
+Z=[Xnonoise(1:2,:)] + v;
+Hgps=[eye(2) zeros(2,2)]; <span class="comment">%output matrix is linear</span>
+</pre><h2 id="4">SENSOR MODEL: Obstalce detector</h2><pre class="codeinput">mx=0;
+sx=1;
+pdfx = makedist(<span class="string">'Normal'</span>,mx,sx^2); <span class="comment">%creates a probability distribution object</span>
+Lx =makedist(<span class="string">'Normal'</span>,0,sx^2);
+</pre><h2 id="5">SENSOR MODEL: Odometry</h2><pre class="codeinput">my=0;
+sy=1;
+pdfy = makedist(<span class="string">'Normal'</span>,my,sy);<span class="comment">%sensor likelihood model, assuming my is correct</span>
+Ly = makedist(<span class="string">'Normal'</span>,0,sy);
+</pre><h2 id="6">PF</h2><pre class="codeinput"><span class="comment">%Initialize state using sensor model</span>
+ns=1000;
+x0=random(pdfx,ns,1);
+y0=random(pdfy,ns,1);
+
+X=zeros(ns,2,nk);
+X(:,:,1)=[x0 y0];
+W=zeros(ns,nk);
+W(:,1) = ones(ns,1)/ns;
+xEst=zeros(nk,2);xEst(1,:)=mean(X(:,:,1),1);
+xSig=zeros(nk,2);xSig(1,:)=std(X(:,:,1),1);
+<span class="comment">%Plot PF</span>
+figure(10);
+hold <span class="string">on</span>;
+hPoints = plot(X(:,1,1),X(:,2,1),<span class="string">'b.'</span>,<span class="string">'markersize'</span>,10);
+hEst = plot(xEst(1,1),xEst(1,2),<span class="string">'r*'</span>,<span class="string">'markersize'</span>,10);
+hold <span class="string">off</span>;
+title(<span class="string">'Particle Distribution'</span>);
+xlabel(<span class="string">'X (miles)'</span>);ylabel(<span class="string">'Y (miles)'</span>);
+axis([-1 9 -1 9]);
+
+Neff_thresh=ns; <span class="comment">%will always resample (enables SIR)</span>
+<span class="comment">%Neff_thresh=ns/2; %standard practice</span>
+<span class="keyword">if</span> record_video,
+    vidfile = VideoWriter(video_name,<span class="string">'MPEG-4'</span>);
+    vidfile.FrameRate = 10;
+    open(vidfile);
+    F(1) = getframe(10);
+    writeVideo(vidfile,F(1));
+<span class="keyword">end</span>
+
+<span class="keyword">for</span> k=2:nk,
+
+    Xprior=X(:,:,k-1);
+
+    <span class="comment">%PREDICTION STEP</span>
+    V=Xnonoise(3,k);
+    theta=Xnonoise(4,k);
+    u=ones(ns,1)*dt*[V*cos(theta) V*sin(theta)];<span class="comment">%sample process noise</span>
+    w1=randn(ns,2)*Qsq;
+    Xpred=Xprior+u+w1; <span class="comment">%predition step for all particles: k -&gt; k+1</span>
+
+    <span class="comment">%UPDATE STEP</span>
+    Zcurrent=Z(:,k)'; <span class="comment">%pull off current measurement</span>
+    Zhat = Xpred; <span class="comment">%calculate estimated measurement: assumes H=eye(2) or z=x+v</span>
+
+    Inn = ones(ns,1)*Zcurrent - Zhat; <span class="comment">%calculate innovations for each particle</span>
+
+    <span class="comment">%calculate likelihood weighting for each particle</span>
+    <span class="keyword">for</span> ipart=1:ns,
+        L(ipart,1) = pdf(Lx,Inn(ipart,1))*pdf(Ly,Inn(ipart,2)); <span class="comment">%likelihoods of two indepedent msts multiply</span>
+    <span class="keyword">end</span>
+
+    <span class="comment">%UPDATE WEIGHTS</span>
+    Wk_unnorm=W(:,k-1).*L; <span class="comment">%update weight with unnormalized likelihood</span>
+    Wk=Wk_unnorm/sum(Wk_unnorm); <span class="comment">%normalize all weights to sum to 1</span>
+
+    <span class="comment">%RESAMPLING</span>
+    Neff=1/[Wk'*Wk]; <span class="comment">%calculate effective number of particles (varies between 1 and ns)</span>
+    <span class="keyword">if</span> Neff&lt;Neff_thresh, <span class="comment">%resample if under threshold</span>
+        <span class="comment">%</span>
+        CDF = cumsum(Wk)/sum(Wk); <span class="comment">%create a running sum function of the weights</span>
+        CDF_plus=CDF+rand(ns,1)*1E-6; <span class="comment">%for cases when a particle weight went to zero</span>
+        <span class="comment">%randomly (uniform) choose likely (better) particles...</span>
+        iSelect  = rand(ns,1);
+        <span class="comment">%find particle corresponding to each y value</span>
+        iNextGeneration = interp1(CDF_plus,1:ns,iSelect,<span class="string">'nearest'</span>,<span class="string">'extrap'</span>);
+        <span class="comment">%copy selected particles for next generation</span>
+        X(:,:,k) = Xpred(iNextGeneration,:);
+        W(:,k) = ones(ns,1)/ns;
+    <span class="keyword">else</span>,
+        <span class="comment">%</span>
+        X(:,:,k) = Xpred;
+        W(:,k)=Wk;
+    <span class="keyword">end</span>
+
+    <span class="comment">%our estimate is simply the mean of the particles</span>
+    xEst(k,:) = sum(Wk.*X(:,:,k),1);
+    xSig(k,:) = sqrt([sum(Wk.*(X(:,1,k)-xEst(k,1)).^2,1) sum(Wk.*(X(:,2,k)-xEst(k,2)).^2,1)]);
+
+figure(10);
+set(hPoints,<span class="string">'XData'</span>,X(:,1,k));
+set(hPoints,<span class="string">'YData'</span>,X(:,2,k));
+set(hEst,<span class="string">'XData'</span>,xEst(k,1));
+set(hEst,<span class="string">'YData'</span>,xEst(k,2));
+drawnow;
+pause(0.1);
+<span class="keyword">if</span> record_video,
+    F(k)=getframe(10);
+    writeVideo(vidfile,F(k));
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> record_video,
+    close(vidfile)
+<span class="keyword">end</span>
+P = zeros(2,2,nk);
+<span class="keyword">for</span> i=1:nk
+    Sx= xSig(i,1);
+    Sy= xSig(i,2);
+    P(:,:,i)= [Sx 0 ; 0 Sy];
+<span class="keyword">end</span>
+ii_plot=[1 2];
+plot_estimator_error(t,Xnonoise,xEst',P,ii_plot,<span class="string">'PF: North/East States'</span>);
+
+plot_birdseyeview(Xnonoise,xEst',P,<span class="string">'PF: Birds Eye'</span>);
+</pre><pre class="codeoutput">
+myMap = 
+
+  binaryOccupancyMap with properties:
+
+   mapLayer Properties
+              LayerName: 'binaryLayer'
+               DataType: 'logical'
+           DefaultValue: 0
+    GridLocationInWorld: [0 0]
+      GridOriginInLocal: [0 0]
+     LocalOriginInWorld: [0 0]
+             Resolution: 5
+               GridSize: [40 40]
+           XLocalLimits: [0 8]
+           YLocalLimits: [0 8]
+           XWorldLimits: [0 8]
+           YWorldLimits: [0 8]
+
+
+x =
+
+    0.6000    0.8000    1.2000    1.4000    1.2000    0.8000    0.6000
+
+
+y =
+
+    1.0000    0.6536    0.6536    1.0000    1.3464    1.3464    1.0000
+
+</pre><img vspace="5" hspace="5" src="pro_02.png" alt=""> <img vspace="5" hspace="5" src="pro_03.png" alt=""> <img vspace="5" hspace="5" src="pro_04.png" alt=""> <pre class="codeinput"><span class="keyword">function</span> [Xnonoise,n,t,dt,nt]=simulate_robot(Uacc,Uomega);
+dt=0.1;
+nt=length(Uacc);
+t=[0:dt:dt*(nt-1)];
+n=4;
+Xnonoise=zeros(n,nt);
+Xnonoise(:,1)=[1;1;8/10;0.588]; <span class="comment">% Given an initial position, velocity and heading</span>
+<span class="keyword">for</span> k=1:(nt-1),
+    Vk=Xnonoise(3,k);
+    Tk=Xnonoise(4,k);
+    Xnonoise(:,k+1) = Xnonoise(:,k) +<span class="keyword">...</span>
+        dt*[Vk*cos(Tk);Vk*sin(Tk);Uacc(k);Uomega(k)];
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">
+myMap = 
+
+  binaryOccupancyMap with properties:
+
+   mapLayer Properties
+              LayerName: 'binaryLayer'
+               DataType: 'logical'
+           DefaultValue: 0
+    GridLocationInWorld: [0 0]
+      GridOriginInLocal: [0 0]
+     LocalOriginInWorld: [0 0]
+             Resolution: 5
+               GridSize: [40 40]
+           XLocalLimits: [0 8]
+           YLocalLimits: [0 8]
+           XWorldLimits: [0 8]
+           YWorldLimits: [0 8]
+
+
+x =
+
+    0.6000    0.8000    1.2000    1.4000    1.2000    0.8000    0.6000
+
+
+y =
+
+    1.0000    0.6536    0.6536    1.0000    1.3464    1.3464    1.0000
+
+</pre><h2 id="8">Least Squares estimation</h2><pre class="codeinput"><span class="keyword">function</span> [xe]=Elocation(Xnonoise,tn)
+bA = [2;4];
+bB = [6;6];
+bC = [4;2];
+<span class="comment">%True location of the robot</span>
+xtrue = [Xnonoise(1,:);Xnonoise(2,:)];
+<span class="comment">%Perfect measurements</span>
+RA = sqrt((bA(1) - xtrue(1,tn)).^2 + (bA(2) - xtrue(2,tn)).^2);
+RB = sqrt((bB(1) - xtrue(1,tn)).^2 + (bB(2) - xtrue(2,tn)).^2);
+RC = sqrt((bC(1) - xtrue(1,tn)).^2 + (bC(2) - xtrue(2,tn)).^2);
+htrue=[RA RB RC];
+na=100;
+Rpart = diag([10 10 10]);
+va = sqrtm(Rpart)*randn(3,na);
+za = [RA;RB;RC]+ va;
+xhat=[0;0;0];
+NLS_pass=1;J=[];Jold=1;iter=0;
+<span class="keyword">while</span> NLS_pass,
+    iter=iter+1;
+    xj=xhat(:,iter);
+    RAhat=sqrt((bA(1) - xj(1))^2 + (bA(2) - xj(2))^2);
+    RBhat=sqrt((bB(1) - xj(1))^2 + (bB(2) - xj(2))^2);
+    RChat=sqrt((bC(1) - xj(1))^2 + (bC(2) - xj(2))^2);
+    H=[(-bA(1)+xj(1))/RA  (-bA(2)+xj(2))/RA;
+        (-bB(1)+xj(1))/RB (-bB(2)+xj(2))/RB;
+        (-bC(1)+xj(1))/RC (-bC(2)+xj(2))/RC];
+    M1=0;M2=0;J(iter)=0;
+    <span class="keyword">for</span> k=1:na,
+        M1=M1+H'*inv(Rpart)*H;
+        ek=[za(:,k)-[RAhat;RBhat;RChat]];
+        M2=M2+H'*inv(Rpart)*ek;
+        J(iter)=J(iter)+0.5*ek'*inv(Rpart)*ek;
+    <span class="keyword">end</span>
+    Sigma_x = inv(M1);
+    xhat(1:2,iter+1)=xj(1:2,:)+inv(M1)*M2;
+    <span class="keyword">if</span> abs(Jold-J(iter))&lt;1E-3,
+        NLS_pass=0;
+    <span class="keyword">else</span>,
+        Jold=J(iter);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+xe=xj(1:2);
+<span class="keyword">end</span>
+</pre><h2 id="9">Plotting functions</h2><pre class="codeinput"><span class="keyword">function</span> plot_estimator(t,x1,x2,P2,ii_plot,title_name);
+<span class="comment">% x1 is the true value or reference comparison</span>
+<span class="comment">% x2,P2 is the estimator state and covariance</span>
+<span class="comment">% ii_plot: 2x1 vector of which states to plot</span>
+<span class="comment">%</span>
+axis_names={<span class="string">'X (miles)'</span>,<span class="string">'Y (miles)'</span>,<span class="string">'Velocity (m/s)'</span>,<span class="string">'Heading (rad)'</span>,<span class="string">'Accel Bias (m/sec^2)'</span>,<span class="string">'RG Bias (rad/sec)'</span>};
+figure;subplot(122);
+ii_x1=[];ii_x2=[];ii_P2=[]; <span class="comment">%for legend</span>
+<span class="comment">%</span>
+<span class="keyword">for</span> i=1:length(ii_plot),
+    ii=ii_plot(i);
+    subplot(1,2,i);
+    hold <span class="string">on</span>;
+    <span class="keyword">if</span> ~isempty(x1),
+        plot(t,x1(ii,:),<span class="string">'color'</span>,[0 0.5 0]);ii_x1=1;
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> ~isempty(x2),
+        plot(t,x2(ii,:),<span class="string">'b-'</span>);ii_x2=2;
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> ~isempty(P2)
+        plot(t,x2(ii,:)'-2*sqrt(squeeze(P2(ii,ii,:))),<span class="string">'b:'</span>);
+        plot(t,x2(ii,:)'+2*sqrt(squeeze(P2(ii,ii,:))),<span class="string">'b:'</span>);ii_P2=3;
+    <span class="keyword">end</span>
+    hold <span class="string">off</span>
+    xlabel(<span class="string">'time (s)'</span>);ylabel(axis_names(ii));grid;
+    xlim([0 10]);set(gca,<span class="string">'xtick'</span>,[0:5:10]);
+<span class="keyword">end</span>
+legend_names={<span class="string">'true state'</span>,<span class="string">'estimate'</span>,<span class="string">'2\sigma bound'</span>};
+legend(legend_names{ii_x1},legend_names{ii_x2},legend_names{ii_P2},<span class="string">'Location'</span>,<span class="string">'South'</span>);
+<span class="comment">%</span>
+sgtitle(title_name);
+PrepFigPresentation(gcf);
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> plot_estimator_error(t,x1,x2,P2,ii_plot,title_name);
+<span class="comment">% x1 is the true value or reference comparison</span>
+<span class="comment">% x2,P2 is the estimator state and covariance</span>
+<span class="comment">% ii_plot: 2x1 vector of which states to plot</span>
+<span class="comment">%</span>
+axis_names={<span class="string">'North (m)'</span>,<span class="string">'East (m)'</span>,<span class="string">'Velocity (m/sec)'</span>,<span class="string">'Heading (rad)'</span>,<span class="string">'Accel Bias (m/sec^2)'</span>,<span class="string">'RG Bias (rad/sec)'</span>};
+figure;subplot(122);
+<span class="comment">%</span>
+<span class="keyword">for</span> i=1:length(ii_plot),
+    ii=ii_plot(i);
+    subplot(1,2,i);
+    err=x2(ii,:)-x1(ii,:);
+    plot(t,err,<span class="string">'b-'</span>);
+    hold <span class="string">on</span>;
+    <span class="keyword">if</span> ~isempty(P2)
+        plot(t,err'-2*sqrt(squeeze(P2(ii,ii,:))),<span class="string">'b:'</span>);
+        plot(t,zeros(length(t),1),<span class="string">'r--'</span>);
+        plot(t,err'+2*sqrt(squeeze(P2(ii,ii,:))),<span class="string">'b:'</span>);
+    <span class="keyword">end</span>
+    hold <span class="string">off</span>
+    xlabel(<span class="string">'time (sec)'</span>);ylabel(axis_names(ii));grid;
+    xlim([0 10]);set(gca,<span class="string">'xtick'</span>,[0:5:10]);
+<span class="keyword">end</span>
+legend(<span class="string">'estimator error'</span>,<span class="string">'2\sigma bound'</span>,<span class="string">'zero error'</span>,<span class="string">'Location'</span>,<span class="string">'South'</span>);
+<span class="comment">%</span>
+sgtitle(title_name);
+PrepFigPresentation(gcf);
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> plot_birdseyeview(x1,x2,P2,title_name);
+<span class="comment">% x1 is the true value or reference comparison</span>
+<span class="comment">% x2,P2 is the estimator state and covariance</span>
+<span class="comment">%</span>
+ii_x1=[];ii_x2=[];ii_P2=[]; <span class="comment">%for legend</span>
+figure;
+myMap=binaryOccupancyMap(8,8,5)
+walls=zeros(40,40);
+walls(1,:)=1;
+walls(end,:)=1;
+walls(:,1)=1;
+walls(:,end)=1;
+walls(10:20,10)=1;
+walls(1:10,20)=1;
+walls(30:40,20)=1;
+walls(20,1:10)=1;
+walls(10,10:20)=1;
+walls(30,20:40)=1;
+walls(10,30:40)=1;
+walls(1:10,30)=1;
+setOccupancy(myMap,[1 1],walls,<span class="string">"grid"</span>)
+show(myMap)
+hold <span class="string">on</span>
+<span class="keyword">if</span> ~isempty(x1),
+    plot(x1(1,:),x1(2,:),<span class="string">'color'</span>,[0 0.5 0]);ii_x1=1;
+<span class="keyword">end</span>
+hold <span class="string">on</span>;
+<span class="keyword">if</span> ~isempty(x2),
+    plot(x2(1,:),x2(2,:),<span class="string">'b-'</span>);ii_x2=2;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isempty(P2),
+    iell=[2 10:10:100];
+    <span class="keyword">for</span> i=1:length(iell),
+        ii=iell(i);
+        [Xe,Ye] = calculateEllipseCov(x2([1 2],ii),P2([1 2],[1 2],ii),3);
+        plot(Xe,Ye,<span class="string">'m-'</span>);
+    <span class="keyword">end</span>
+    ii_P2=3;
+<span class="keyword">end</span>
+xlabel(<span class="string">'North (m)'</span>);ylabel(<span class="string">'East (m)'</span>);grid;
+hold <span class="string">on</span>;
+[robot] = hexagon(0.4,1,1);
+hold <span class="string">off</span>
+legend_names={<span class="string">'true trajectory'</span>,<span class="string">'estimated trajectory'</span>,<span class="string">'3\sigma bound'</span>};
+legend(legend_names{ii_x1},legend_names{ii_x2},legend_names{ii_P2},<span class="string">'Location'</span>,<span class="string">'South'</span>)
+<span class="comment">%</span>
+title(title_name);
+<span class="comment">%PrepFigPresentation(gcf);</span>
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> [Xe,Ye] = calculateEllipseCov(X, P, nsig, steps)
+    <span class="comment">%# This functions returns points to draw an ellipse</span>
+    <span class="comment">%#</span>
+    <span class="comment">%#  @param X     x,y coordinates</span>
+    <span class="comment">%#  @param P     covariance matrix</span>
+    <span class="comment">%#</span>
+
+    error(nargchk(2, 3, nargin));
+    <span class="keyword">if</span> nargin&lt;3, nsig = 1; <span class="keyword">end</span>
+    <span class="keyword">if</span> nargin&lt;4, steps = 36; <span class="keyword">end</span>
+
+    [U,S,V]=svd(P);
+    s1=sqrt(S(1,1));s2=sqrt(S(2,2));angle=acos(U(1,1))*180/pi;
+    x=X(1);
+    y=X(2);
+
+    <span class="comment">%scale by nsig</span>
+    s1=nsig*s1;
+    s2=nsig*s2;
+
+    beta = angle * (pi / 180);
+    sinbeta = sin(beta);
+    cosbeta = cos(beta);
+
+    alpha = linspace(0, 360, steps)' .* (pi / 180);
+    sinalpha = sin(alpha);
+    cosalpha = cos(alpha);
+
+    Xe = (x + (s1 * cosalpha * cosbeta - s2 * sinalpha * sinbeta));
+    Ye = (y + (s1 * cosalpha * sinbeta + s2 * sinalpha * cosbeta));
+
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> PrepFigPresentation(fignum);
+<span class="comment">%</span>
+<span class="comment">% prepares a figure for presentations</span>
+<span class="comment">%</span>
+<span class="comment">% Fontsize: 14</span>
+<span class="comment">% Fontweight: bold</span>
+<span class="comment">% LineWidth: 2</span>
+<span class="comment">%</span>
+
+figure(fignum);
+fig_children=get(fignum,<span class="string">'children'</span>); <span class="comment">%find all sub-plots</span>
+
+<span class="keyword">for</span> i=1:length(fig_children),
+
+    set(fig_children(i),<span class="string">'FontSize'</span>,16);
+    set(fig_children(i),<span class="string">'FontWeight'</span>,<span class="string">'bold'</span>);
+
+    fig_children_children=get(fig_children(i),<span class="string">'Children'</span>);
+    set(fig_children_children,<span class="string">'LineWidth'</span>,2);
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="comment">% Define robot model</span>
+<span class="keyword">function</span> [robot]=hexagon(cote,x0,y0)
+   <span class="comment">%cote= side size;,(x0,y0) exagon center coordinates;</span>
+   x=cote*[-1 -0.5 0.5 1 0.5 -0.5 -1]+x0
+   y=cote*sqrt(3)*[0 -0.5 -0.5 0 0.5 0.5 0]+y0
+   robot=plot(x,y,<span class="string">'b'</span>,<span class="string">'Linewidth'</span>,2);
+   <span class="keyword">end</span>
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2021b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%MAE 6760 Model Based Estimation %   M. Campbell
+%Xinyu Liu
+%Final Project
+%% Problem SetREPLACE_WITH_DASH_DASHup: Define Scenario, Simulate no noise case
+clear all;close all;
+rng('default')
+video_name='PF_Gaussian1.mp4';
+record_video=0;
+%Define trajectory
+Uacc = [zeros(1,100)];
+Uomega = [ones(1,30)*0.1 zeros(1,30) -ones(1,40)*0.3];
+%simulate no noise system
+[Xnonoise,n,t,dt,nt]=simulate_robot(Uacc,Uomega);
+nk=nt;
+plot_birdseyeview(Xnonoise,[],[],'True trajectory View');
+% %calculate est error and plot errorbar
+% i=1;xe=zeros(2,100)
+% for i=(1:99)
+% xe(:,i)=Elocation(Xnonoise,i)
+% i=i+1
+% end
+nx=1:10:100;
+x=Xnonoise(1,nx);
+y=Xnonoise(2,nx);
+% errorx=xe(1,nx)-x;
+% errory=xe(2,nx)-y;
+xpos=[0,1.1554,0,0,0,0.79,0,0.558,0,0];
+xneg=[0.422,0,0.3021,0.0755,0.2741,0,0.0494,0,0.3838,0.1087];
+ypos=[0.5887,0,0.0354,0,0.5228,0.1143,0.3003,0.1914,0.2372,0.4706];
+yneg=[0,0.8959,0,0.2683,0,0,0,0,0,0];
+hold on
+errorbar(x,y,yneg,ypos,xneg,xpos,'o')
+ii_plot=[3 4];
+plot_estimator(t,Xnonoise,[],[],ii_plot,'Ture Velocity/Heading States');
+%[xe]=Elocation(Xnonoise,10)
+%% Create IMU measurements (accel, rate gyro) and 2D GPS
+nw=2;
+Qw=diag([0.1^2 0.04^2]);
+Qsq=sqrtm(Qw);
+w=sqrtm(Qw)*randn(nw,nk);
+Zacc=Uacc+w(1,:);
+Zrg=Uomega+w(2,:);
+%Create 2D GPS like measurements 
+nz=2;
+R=eye(nz)*1^2;
+v=sqrtm(R)*randn(nz,nt);
+Z=[Xnonoise(1:2,:)] + v;
+Hgps=[eye(2) zeros(2,2)]; %output matrix is linear
+%% SENSOR MODEL: Obstalce detector 
+mx=0; 
+sx=1; 
+pdfx = makedist('Normal',mx,sx^2); %creates a probability distribution object
+Lx =makedist('Normal',0,sx^2);
+%% SENSOR MODEL: Odometry
+my=0;
+sy=1;
+pdfy = makedist('Normal',my,sy);%sensor likelihood model, assuming my is correct
+Ly = makedist('Normal',0,sy);
+%% PF
+%Initialize state using sensor model
+ns=1000;
+x0=random(pdfx,ns,1);
+y0=random(pdfy,ns,1);
+
+X=zeros(ns,2,nk);
+X(:,:,1)=[x0 y0];
+W=zeros(ns,nk);
+W(:,1) = ones(ns,1)/ns;
+xEst=zeros(nk,2);xEst(1,:)=mean(X(:,:,1),1);
+xSig=zeros(nk,2);xSig(1,:)=std(X(:,:,1),1);
+%Plot PF
+figure(10);
+hold on;
+hPoints = plot(X(:,1,1),X(:,2,1),'b.','markersize',10);
+hEst = plot(xEst(1,1),xEst(1,2),'r*','markersize',10);
+hold off;
+title('Particle Distribution');
+xlabel('X (miles)');ylabel('Y (miles)');
+axis([-1 9 -1 9]);
+
+Neff_thresh=ns; %will always resample (enables SIR)
+%Neff_thresh=ns/2; %standard practice
+if record_video,
+    vidfile = VideoWriter(video_name,'MPEG-4');
+    vidfile.FrameRate = 10; 
+    open(vidfile);
+    F(1) = getframe(10); 
+    writeVideo(vidfile,F(1));
+end
+
+for k=2:nk,
+    
+    Xprior=X(:,:,k-1);
+    
+    %PREDICTION STEP
+    V=Xnonoise(3,k);
+    theta=Xnonoise(4,k);
+    u=ones(ns,1)*dt*[V*cos(theta) V*sin(theta)];%sample process noise
+    w1=randn(ns,2)*Qsq;
+    Xpred=Xprior+u+w1; %predition step for all particles: k -> k+1
+    
+    %UPDATE STEP
+    Zcurrent=Z(:,k)'; %pull off current measurement
+    Zhat = Xpred; %calculate estimated measurement: assumes H=eye(2) or z=x+v 
+    
+    Inn = ones(ns,1)*Zcurrent - Zhat; %calculate innovations for each particle
+    
+    %calculate likelihood weighting for each particle
+    for ipart=1:ns,
+        L(ipart,1) = pdf(Lx,Inn(ipart,1))*pdf(Ly,Inn(ipart,2)); %likelihoods of two indepedent msts multiply
+    end
+    
+    %UPDATE WEIGHTS
+    Wk_unnorm=W(:,k-1).*L; %update weight with unnormalized likelihood
+    Wk=Wk_unnorm/sum(Wk_unnorm); %normalize all weights to sum to 1
+
+    %RESAMPLING    
+    Neff=1/[Wk'*Wk]; %calculate effective number of particles (varies between 1 and ns)
+    if Neff<Neff_thresh, %resample if under threshold
+        %
+        CDF = cumsum(Wk)/sum(Wk); %create a running sum function of the weights
+        CDF_plus=CDF+rand(ns,1)*1E-6; %for cases when a particle weight went to zero
+        %randomly (uniform) choose likely (better) particles...
+        iSelect  = rand(ns,1);
+        %find particle corresponding to each y value
+        iNextGeneration = interp1(CDF_plus,1:ns,iSelect,'nearest','extrap');
+        %copy selected particles for next generation
+        X(:,:,k) = Xpred(iNextGeneration,:);
+        W(:,k) = ones(ns,1)/ns;
+    else,
+        %
+        X(:,:,k) = Xpred;
+        W(:,k)=Wk;
+    end
+        
+    %our estimate is simply the mean of the particles
+    xEst(k,:) = sum(Wk.*X(:,:,k),1);
+    xSig(k,:) = sqrt([sum(Wk.*(X(:,1,k)-xEst(k,1)).^2,1) sum(Wk.*(X(:,2,k)-xEst(k,2)).^2,1)]);
+    
+figure(10);
+set(hPoints,'XData',X(:,1,k));
+set(hPoints,'YData',X(:,2,k));
+set(hEst,'XData',xEst(k,1));
+set(hEst,'YData',xEst(k,2));
+drawnow;
+pause(0.1);
+if record_video,
+    F(k)=getframe(10);
+    writeVideo(vidfile,F(k));
+end
+end
+
+if record_video,
+    close(vidfile)
+end
+P = zeros(2,2,nk);
+for i=1:nk
+    Sx= xSig(i,1);
+    Sy= xSig(i,2);
+    P(:,:,i)= [Sx 0 ; 0 Sy];
+end
+ii_plot=[1 2];
+plot_estimator_error(t,Xnonoise,xEst',P,ii_plot,'PF: North/East States');
+
+plot_birdseyeview(Xnonoise,xEst',P,'PF: Birds Eye');
+
+%% 
+function [Xnonoise,n,t,dt,nt]=simulate_robot(Uacc,Uomega);
+dt=0.1;
+nt=length(Uacc);
+t=[0:dt:dt*(nt-1)];
+n=4;
+Xnonoise=zeros(n,nt);
+Xnonoise(:,1)=[1;1;8/10;0.588]; % Given an initial position, velocity and heading
+for k=1:(nt-1),
+    Vk=Xnonoise(3,k);
+    Tk=Xnonoise(4,k);    
+    Xnonoise(:,k+1) = Xnonoise(:,k) +...
+        dt*[Vk*cos(Tk);Vk*sin(Tk);Uacc(k);Uomega(k)];   
+end
+end
+%% Least Squares estimation
+function [xe]=Elocation(Xnonoise,tn)
+bA = [2;4];
+bB = [6;6];
+bC = [4;2];
+%True location of the robot
+xtrue = [Xnonoise(1,:);Xnonoise(2,:)];
+%Perfect measurements
+RA = sqrt((bA(1) - xtrue(1,tn)).^2 + (bA(2) - xtrue(2,tn)).^2);
+RB = sqrt((bB(1) - xtrue(1,tn)).^2 + (bB(2) - xtrue(2,tn)).^2);
+RC = sqrt((bC(1) - xtrue(1,tn)).^2 + (bC(2) - xtrue(2,tn)).^2);
+htrue=[RA RB RC];
+na=100;
+Rpart = diag([10 10 10]);
+va = sqrtm(Rpart)*randn(3,na);
+za = [RA;RB;RC]+ va;
+xhat=[0;0;0];
+NLS_pass=1;J=[];Jold=1;iter=0;
+while NLS_pass,
+    iter=iter+1;
+    xj=xhat(:,iter);
+    RAhat=sqrt((bA(1) - xj(1))^2 + (bA(2) - xj(2))^2);
+    RBhat=sqrt((bB(1) - xj(1))^2 + (bB(2) - xj(2))^2);
+    RChat=sqrt((bC(1) - xj(1))^2 + (bC(2) - xj(2))^2);
+    H=[(-bA(1)+xj(1))/RA  (-bA(2)+xj(2))/RA;
+        (-bB(1)+xj(1))/RB (-bB(2)+xj(2))/RB;
+        (-bC(1)+xj(1))/RC (-bC(2)+xj(2))/RC];
+    M1=0;M2=0;J(iter)=0;
+    for k=1:na,
+        M1=M1+H'*inv(Rpart)*H;
+        ek=[za(:,k)-[RAhat;RBhat;RChat]];
+        M2=M2+H'*inv(Rpart)*ek;
+        J(iter)=J(iter)+0.5*ek'*inv(Rpart)*ek;
+    end
+    Sigma_x = inv(M1);
+    xhat(1:2,iter+1)=xj(1:2,:)+inv(M1)*M2;
+    if abs(Jold-J(iter))<1E-3,
+        NLS_pass=0;
+    else,
+        Jold=J(iter);
+    end
+end
+xe=xj(1:2);
+end
+%% Plotting functions
+
+function plot_estimator(t,x1,x2,P2,ii_plot,title_name);
+% x1 is the true value or reference comparison
+% x2,P2 is the estimator state and covariance
+% ii_plot: 2x1 vector of which states to plot
+%
+axis_names={'X (miles)','Y (miles)','Velocity (m/s)','Heading (rad)','Accel Bias (m/sec^2)','RG Bias (rad/sec)'};
+figure;subplot(122);
+ii_x1=[];ii_x2=[];ii_P2=[]; %for legend
+%
+for i=1:length(ii_plot),
+    ii=ii_plot(i);
+    subplot(1,2,i);
+    hold on;
+    if ~isempty(x1),
+        plot(t,x1(ii,:),'color',[0 0.5 0]);ii_x1=1;
+    end  
+    if ~isempty(x2),
+        plot(t,x2(ii,:),'b-');ii_x2=2;
+    end  
+    if ~isempty(P2)
+        plot(t,x2(ii,:)'-2*sqrt(squeeze(P2(ii,ii,:))),'b:');
+        plot(t,x2(ii,:)'+2*sqrt(squeeze(P2(ii,ii,:))),'b:');ii_P2=3;
+    end
+    hold off
+    xlabel('time (s)');ylabel(axis_names(ii));grid;
+    xlim([0 10]);set(gca,'xtick',[0:5:10]);
+end
+legend_names={'true state','estimate','2\sigma bound'};
+legend(legend_names{ii_x1},legend_names{ii_x2},legend_names{ii_P2},'Location','South');
+%
+sgtitle(title_name);
+PrepFigPresentation(gcf);
+end
+
+function plot_estimator_error(t,x1,x2,P2,ii_plot,title_name);
+% x1 is the true value or reference comparison
+% x2,P2 is the estimator state and covariance
+% ii_plot: 2x1 vector of which states to plot
+%
+axis_names={'North (m)','East (m)','Velocity (m/sec)','Heading (rad)','Accel Bias (m/sec^2)','RG Bias (rad/sec)'};
+figure;subplot(122);
+%
+for i=1:length(ii_plot),
+    ii=ii_plot(i);
+    subplot(1,2,i);
+    err=x2(ii,:)-x1(ii,:);
+    plot(t,err,'b-');
+    hold on;
+    if ~isempty(P2)
+        plot(t,err'-2*sqrt(squeeze(P2(ii,ii,:))),'b:');
+        plot(t,zeros(length(t),1),'rREPLACE_WITH_DASH_DASH');
+        plot(t,err'+2*sqrt(squeeze(P2(ii,ii,:))),'b:');
+    end
+    hold off
+    xlabel('time (sec)');ylabel(axis_names(ii));grid;
+    xlim([0 10]);set(gca,'xtick',[0:5:10]);
+end
+legend('estimator error','2\sigma bound','zero error','Location','South');
+%
+sgtitle(title_name);
+PrepFigPresentation(gcf);
+end
+
+function plot_birdseyeview(x1,x2,P2,title_name);
+% x1 is the true value or reference comparison
+% x2,P2 is the estimator state and covariance
+% 
+ii_x1=[];ii_x2=[];ii_P2=[]; %for legend
+figure;
+myMap=binaryOccupancyMap(8,8,5)
+walls=zeros(40,40);
+walls(1,:)=1;
+walls(end,:)=1;
+walls(:,1)=1;
+walls(:,end)=1;
+walls(10:20,10)=1;
+walls(1:10,20)=1;
+walls(30:40,20)=1;
+walls(20,1:10)=1;
+walls(10,10:20)=1;
+walls(30,20:40)=1;
+walls(10,30:40)=1;
+walls(1:10,30)=1;
+setOccupancy(myMap,[1 1],walls,"grid")
+show(myMap)
+hold on
+if ~isempty(x1),
+    plot(x1(1,:),x1(2,:),'color',[0 0.5 0]);ii_x1=1;
+end
+hold on;
+if ~isempty(x2),
+    plot(x2(1,:),x2(2,:),'b-');ii_x2=2;
+end
+if ~isempty(P2),
+    iell=[2 10:10:100];
+    for i=1:length(iell),
+        ii=iell(i);
+        [Xe,Ye] = calculateEllipseCov(x2([1 2],ii),P2([1 2],[1 2],ii),3);
+        plot(Xe,Ye,'m-');
+    end
+    ii_P2=3;
+end
+xlabel('North (m)');ylabel('East (m)');grid;
+hold on;
+[robot] = hexagon(0.4,1,1);
+hold off
+legend_names={'true trajectory','estimated trajectory','3\sigma bound'};
+legend(legend_names{ii_x1},legend_names{ii_x2},legend_names{ii_P2},'Location','South')
+%
+title(title_name);
+%PrepFigPresentation(gcf);
+end
+
+function [Xe,Ye] = calculateEllipseCov(X, P, nsig, steps) 
+    %# This functions returns points to draw an ellipse 
+    %# 
+    %#  @param X     x,y coordinates 
+    %#  @param P     covariance matrix 
+    %# 
+ 
+    error(nargchk(2, 3, nargin)); 
+    if nargin<3, nsig = 1; end 
+    if nargin<4, steps = 36; end 
+    
+    [U,S,V]=svd(P);
+    s1=sqrt(S(1,1));s2=sqrt(S(2,2));angle=acos(U(1,1))*180/pi;
+    x=X(1);
+    y=X(2);
+
+    %scale by nsig
+    s1=nsig*s1;
+    s2=nsig*s2;
+
+    beta = angle * (pi / 180); 
+    sinbeta = sin(beta); 
+    cosbeta = cos(beta); 
+ 
+    alpha = linspace(0, 360, steps)' .* (pi / 180); 
+    sinalpha = sin(alpha); 
+    cosalpha = cos(alpha); 
+ 
+    Xe = (x + (s1 * cosalpha * cosbeta - s2 * sinalpha * sinbeta)); 
+    Ye = (y + (s1 * cosalpha * sinbeta + s2 * sinalpha * cosbeta)); 
+ 
+end 
+
+function PrepFigPresentation(fignum);
+%
+% prepares a figure for presentations
+%
+% Fontsize: 14
+% Fontweight: bold
+% LineWidth: 2
+% 
+
+figure(fignum);
+fig_children=get(fignum,'children'); %find all sub-plots
+
+for i=1:length(fig_children),
+    
+    set(fig_children(i),'FontSize',16);
+    set(fig_children(i),'FontWeight','bold');
+    
+    fig_children_children=get(fig_children(i),'Children');
+    set(fig_children_children,'LineWidth',2);
+end
+end
+% Define robot model
+function [robot]=hexagon(cote,x0,y0)
+   %cote= side size;,(x0,y0) exagon center coordinates;
+   x=cote*[-1 -0.5 0.5 1 0.5 -0.5 -1]+x0
+   y=cote*sqrt(3)*[0 -0.5 -0.5 0 0.5 0.5 0]+y0
+   robot=plot(x,y,'b','Linewidth',2);
+   end
+##### SOURCE END #####
+--></body></html>
